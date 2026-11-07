@@ -1,7 +1,7 @@
 //! Options model.
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Mode { Default, Session(String, u32), Track(String, String, u32), Export(String), Mix(String) }
+pub enum Mode { Default, Session(String, u32), Track(usize, String), Bus(usize, String), List }
 
 #[derive(Debug, Clone)]
 pub struct Options { pub mode: Mode }

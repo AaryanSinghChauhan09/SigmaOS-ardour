@@ -1,18 +1,11 @@
 //! ardour model — digital audio workstation.
 
 #[derive(Debug, Clone)]
-pub struct Track {
-    pub name: String,
-    pub type_: String,
-    pub channels: u32,
-    pub muted: bool,
-}
-
-#[derive(Debug, Clone)]
 pub struct Session {
     pub name: String,
+    pub tracks: Vec<String>,
+    pub buses: Vec<String>,
     pub sample_rate: u32,
-    pub tracks: Vec<Track>,
 }
 
 #[derive(Debug, Clone)]
@@ -27,28 +20,38 @@ impl Default for Model {
 impl Model {
     pub fn new() -> Self { Self::default() }
 
-    pub fn create_session(&mut self, name: &str, sample_rate: u32) -> bool {
-        self.sessions.push(Session { name: name.into(), sample_rate, tracks: vec![] });
-        true
+    pub fn create(&mut self, name: &str, sample_rate: u32) -> usize {
+        let id = self.sessions.len();
+        self.sessions.push(Session { name: name.into(), tracks: vec![], buses: vec![], sample_rate });
+        id
     }
 
-    pub fn add_track(&mut self, session: &str, track: Track) -> bool {
-        if let Some(s) = self.sessions.iter_mut().find(|s| s.name == session) {
-            s.tracks.push(track); true
+    pub fn add_track(&mut self, session_id: usize, track_name: &str) -> bool {
+        if let Some(s) = self.sessions.get_mut(session_id) {
+            s.tracks.push(track_name.into());
+            true
         } else { false }
     }
 
-    pub fn list_sessions(&self) -> &[Session] { &self.sessions }
+    pub fn add_bus(&mut self, session_id: usize, bus_name: &str) -> bool {
+        if let Some(s) = self.sessions.get_mut(session_id) {
+            s.buses.push(bus_name.into());
+            true
+        } else { false }
+    }
+
+    pub fn list(&self) -> &[Session] { &self.sessions }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn session_track() {
+    fn session_tracks_buses() {
         let mut a = Model::new();
-        assert!(a.create_session("mix1", 48000));
-        assert!(a.add_track("mix1", Track { name: "vocals".into(), type_: "audio".into(), channels: 2, muted: false }));
-        assert_eq!(a.list_sessions()[0].tracks.len(), 1);
+        let id = a.create("mix1", 48000);
+        assert!(a.add_track(id, "drums"));
+        assert!(a.add_bus(id, "master"));
+        assert_eq!(a.sessions[id].tracks.len(), 1);
     }
 }
