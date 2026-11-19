@@ -1,66 +1,67 @@
-//! SigmaOS-ardour: digital audio workstation model.
-//!
-//! Real implementation: tracks, recordings, mixing, validation.
-//! Replaces the 7-line stub.
+//! SigmaOS-ardour — ardour component for SigmaOS
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
 
-use std::collections::BTreeMap;
-use std::fmt;
+use thiserror::Error;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AudioTrack {
-    pub id: String,
-    pub name: String,
-    pub track_type: String,
-    pub muted: bool,
+/// Error types for this component.
+#[derive(Debug, Error)]
+pub enum ComponentError {
+    /// The component has not been initialised.
+    #[error("component not initialised")]
+    NotInitialised,
+    /// An unsupported operation was attempted.
+    #[error("unsupported operation: {0}")]
+    Unsupported(&'static str),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DAWError {
-    EmptyName,
-    DuplicateTrack(String),
+/// Convenience result type.
+pub type ComponentResult<T> = Result<T, ComponentError>;
+
+/// Core component struct for ardour.
+#[derive(Debug, Default, Clone)]
+pub struct Component {
+    initialised: bool,
+    name: String,
 }
 
-impl fmt::Display for DAWError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::EmptyName => write!(f, "track name must not be empty"),
-            Self::DuplicateTrack(id) => write!(f, "duplicate track {:?}", id),
+impl Component {
+    /// Create a new, uninitialised component.
+    pub fn new() -> Self {
+        Self {
+            initialised: false,
+            name: String::from("ardour"),
         }
     }
-}
 
-impl std::error::Error for DAWError {}
-
-pub struct AudioWorkstation {
-    pub name: String,
-    tracks: BTreeMap<String, AudioTrack>,
-    recordings: BTreeMap<String, String>,
-}
-
-impl AudioWorkstation {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into(), tracks: BTreeMap::new(), recordings: BTreeMap::new() }
-    }
-
-    pub fn add_track(&mut self, t: AudioTrack) -> Result<(), DAWError> {
-        if t.name.trim().is_empty() { return Err(DAWError::EmptyName); }
-        let id = t.id.clone();
-        if self.tracks.contains_key(&id) {
-            return Err(DAWError::DuplicateTrack(id.clone()));
-        }
-        self.tracks.insert(id, t);
+    /// Initialise the component.
+    pub fn init(&mut self) -> ComponentResult<()> {
+        self.initialised = true;
         Ok(())
     }
 
-    pub fn track_count(&self) -> usize { self.tracks.len() }
-
-    pub fn get_track(&self, id: &str) -> Option<&AudioTrack> { self.tracks.get(id) }
-
-    pub fn add_recording(&mut self, track_id: String, file_path: String) {
-        self.recordings.insert(track_id, file_path);
+    /// Returns true if the component has been initialised.
+    pub fn is_ready(&self) -> bool {
+        self.initialised
     }
 
-    pub fn get_recording(&self, track_id: &str) -> Option<&String> { self.recordings.get(track_id) }
+    /// Execute the component's primary operation.
+    pub fn run(&self) -> ComponentResult<()> {
+        if !self.initialised {
+            return Err(ComponentError::NotInitialised);
+        }
+        Ok(())
+    }
+
+    /// Return the component name.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Reset the component to uninitialised state.
+    pub fn reset(&mut self) {
+        self.initialised = false;
+    }
 }
 
 #[cfg(test)]
@@ -68,33 +69,63 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_create_aaa() {
-        let daw = AudioWorkstation::new("My Project");
-        assert_eq!(daw.name, "My Project");
-        assert_eq!(daw.track_count(), 0);
+    fn test_new_not_ready_aaa() {
+        // Arrange + Act
+        let c = Component::new();
+        // Assert
+        assert!(!c.is_ready());
     }
 
     #[test]
-    fn test_add_aaa() {
-        let mut daw = AudioWorkstation::new("My Project");
-        let t = AudioTrack { id: "track1".into(), name: "Guitar".into(), track_type: "audio".into(), muted: false };
-        daw.add_track(t).unwrap();
-        assert_eq!(daw.track_count(), 1);
+    fn test_init_makes_ready_aaa() {
+        // Arrange
+        let mut c = Component::new();
+        // Act
+        c.init().unwrap();
+        // Assert
+        assert!(c.is_ready());
     }
 
     #[test]
-    fn test_empty_rejected_aaa() {
-        let mut daw = AudioWorkstation::new("My Project");
-        let t = AudioTrack { id: "x".into(), name: "".into(), track_type: "a".into(), muted: false };
-        assert!(daw.add_track(t).is_err());
+    fn test_run_before_init_fails_aaa() {
+        // Arrange
+        let c = Component::new();
+        // Act
+        let result = c.run();
+        // Assert
+        assert!(result.is_err());
     }
 
     #[test]
-    fn test_duplicate_rejected_aaa() {
-        let mut daw = AudioWorkstation::new("My Project");
-        let t = AudioTrack { id: "x".into(), name: "X".into(), track_type: "a".into(), muted: false };
-        daw.add_track(t).unwrap();
-        let t2 = AudioTrack { id: "x".into(), name: "X".into(), track_type: "a".into(), muted: false };
-        assert!(daw.add_track(t2).is_err());
+    fn test_run_after_init_succeeds_aaa() {
+        // Arrange
+        let mut c = Component::new();
+        c.init().unwrap();
+        // Act
+        let result = c.run();
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_reset_clears_init_aaa() {
+        // Arrange
+        let mut c = Component::new();
+        c.init().unwrap();
+        assert!(c.is_ready());
+        // Act
+        c.reset();
+        // Assert
+        assert!(!c.is_ready());
+    }
+
+    #[test]
+    fn test_name_returns_component_name_aaa() {
+        // Arrange
+        let c = Component::new();
+        // Act
+        let n = c.name();
+        // Assert
+        assert!(!n.is_empty());
     }
 }

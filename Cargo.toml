@@ -1,8 +1,15 @@
 [package]
-name = "sigmaos_ardour"
+name = "SigmaOS-ardour"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+description = "SigmaOS sigmaos_ardour component"
 
 [lib]
 name = "sigmaos_ardour"
 path = "src/lib.rs"
+
+[dependencies]
+thiserror = "1"
+
+[dev-dependencies]
